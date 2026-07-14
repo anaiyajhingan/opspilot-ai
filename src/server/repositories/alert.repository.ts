@@ -100,9 +100,12 @@ export class AlertRepository {
       db.alert.findMany({
         where,
         include: {
-          project: { select: { id: true, name: true } },
-          incident: { select: { id: true, title: true } },
-          assignedUser: { select: { id: true, name: true } },
+          project: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
         orderBy: { [sort.field]: sort.direction },
         skip,
@@ -121,10 +124,7 @@ export class AlertRepository {
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         projectName: item.project.name,
-        incidentId: item.incident?.id,
-        incidentTitle: item.incident?.title,
-        assignedUserId: item.assignedUser?.id,
-        assignedUserName: item.assignedUser?.name,
+        
       })),
       total,
       page,
@@ -140,9 +140,13 @@ export class AlertRepository {
     const alert = await db.alert.findUnique({
       where: { id },
       include: {
-        project: { select: { id: true, name: true, organizationId: true } },
-        incident: { select: { id: true, title: true } },
-        assignedUser: { select: { id: true, name: true, email: true } },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            organizationId: true,
+          },
+        },
       },
     });
 
