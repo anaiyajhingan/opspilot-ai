@@ -1,0 +1,422 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  apiKeys        ApiKey[]
+  AuditLog       AuditLog[]
+  projects       Project[]
+  users          User[]
+  aiConversations AiConversation[]
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  name                    String
+  email                   String                   @unique
+  emailVerified           DateTime?
+  image                   String?
+  passwordHash            String?
+  role                    Role                     @default(MEMBER)
+  organizationId          String
+  notificationPrefs       Json                     @default("{\"email\": true, \"inApp\": true}")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  accounts                Account[]
+  AuditLog                AuditLog[]
+  aiConversations         AiConversation[]
+  emailVerificationTokens EmailVerificationToken[]
+  assignedIncidents       Incident[]               @relation("IncidentAssignee")
+  createdIncidents        Incident[]               @relation("IncidentCreatedBy")
+  comments                IncidentComment[]
+  timelineEvents          IncidentTimelineEvent[]
+  notifications           Notification[]
+  passwordResetTokens     PasswordResetToken[]
+  Project                 Project[]
+  ProjectActivity         ProjectActivity[]
+  ProjectMember           ProjectMember[]
+  sessions                Session[]
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Project {
+  id               String             @id @default(cuid())
+  name             String
+  description      String?
+  organizationId   String
+  status           ProjectStatus      @default(PLANNING)
+  priority         ProjectPriority    @default(MEDIUM)
+  progress         Int                @default(0)
+  startDate        DateTime?
+  dueDate          DateTime?
+  completedAt      DateTime?
+  ownerId          String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  alerts           Alert[]
+  incidents        Incident[]
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User             User?              @relation(fields: [ownerId], references: [id])
+  ProjectActivity  ProjectActivity[]
+  ProjectMember    ProjectMember[]
+  ProjectMilestone ProjectMilestone[]
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([priority])
+  @@index([status])
+}
+
+model Incident {
+  id             String                  @id @default(cuid())
+  title          String
+  description    String
+  status         IncidentStatus          @default(OPEN)
+  severity       Severity                @default(SEV3)
+  tags           String[]                @default([])
+  projectId      String
+  createdById    String
+  assigneeId     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  aiAnalysis     AiAnalysis?
+  attachments    Attachment[]
+  assignee       User?                   @relation("IncidentAssignee", fields: [assigneeId], references: [id])
+  createdBy      User                    @relation("IncidentCreatedBy", fields: [createdById], references: [id])
+  project        Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments       IncidentComment[]
+  timelineEvents IncidentTimelineEvent[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([severity])
+  @@index([projectId, status, severity])
+}
+
+model IncidentComment {
+  id         String   @id @default(cuid())
+  body       String
+  incidentId String
+  authorId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  author     User     @relation(fields: [authorId], references: [id])
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+model IncidentTimelineEvent {
+  id         String   @id @default(cuid())
+  incidentId String
+  actorId    String?
+  label      String
+  detail     String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id])
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+model Attachment {
+  id         String         @id @default(cuid())
+  incidentId String
+  fileName   String
+  url        String
+  kind       AttachmentKind @default(FILE)
+  sizeBytes  Int
+  createdAt  DateTime       @default(now())
+  incident   Incident       @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+model AiAnalysis {
+  id             String   @id @default(cuid())
+  incidentId     String   @unique
+  summary        String
+  rootCause      String
+  suggestedFixes String[] @default([])
+  riskAnalysis   String
+  postmortem     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  incident       Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id        String      @id @default(cuid())
+  title     String
+  source    String
+  status    AlertStatus @default(FIRING)
+  severity  Severity    @default(SEV3)
+  projectId String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  hashedKey      String       @unique
+  keyPrefix      String
+  lastUsedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model AuditLog {
+  id             String       @id
+  organizationId String
+  userId         String?
+  action         String
+  targetType     String
+  targetId       String?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  Organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User           User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+}
+
+model ProjectActivity {
+  id        String   @id
+  projectId String
+  userId    String?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  Project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  User      User?    @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([projectId])
+}
+
+model ProjectMember {
+  id        String            @id
+  projectId String
+  userId    String
+  role      ProjectMemberRole @default(MEMBER)
+  joinedAt  DateTime          @default(now())
+  Project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  User      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ProjectMilestone {
+  id          String          @id
+  projectId   String
+  title       String
+  description String?
+  status      MilestoneStatus @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime
+  Project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model AiConversation {
+  id             String   @id @default(cuid())
+  title          String
+  organizationId String
+  userId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     AiMessage[]
+
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model AiMessage {
+  id              String   @id @default(cuid())
+  conversationId  String
+  role            String
+  content         String   @db.Text
+  createdAt       DateTime @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+  CLOSED
+}
+
+enum Severity {
+  SEV1
+  SEV2
+  SEV3
+  SEV4
+}
+
+enum AlertStatus {
+  FIRING
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum NotificationType {
+  INCIDENT_ASSIGNED
+  INCIDENT_STATUS_CHANGED
+  INCIDENT_COMMENT
+  ALERT_FIRING
+  MENTION
+  SYSTEM
+}
+
+enum AttachmentKind {
+  IMAGE
+  FILE
+  LOG
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ProjectMemberRole {
+  OWNER
+  MANAGER
+  MEMBER
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}

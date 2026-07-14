@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — see design doc, section 9 (Design system).
+ * Dark mode is the default and only theme applied out of the box;
+ * `.light` overrides swap the palette without a structural redesign.
+ */
+:root {
+  --background: #0b0d12;
+  --surface: #12151c;
+  --surface-hover: #181c25;
+  --border: #22262f;
+  --foreground: #e7e9ed;
+  --muted-foreground: #8b909c;
+  --accent: #5b8def;
+
+  --sev-1: #f04848;
+  --sev-2: #f0a048;
+  --sev-3: #f0d848;
+  --sev-4: #5b8def;
+  --success: #3dd68c;
+
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-control: 6px;
+  --radius-card: 10px;
+}
+
+.light {
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --surface-hover: #f0f1f4;
+  --border: #e3e5e9;
+  --foreground: #14161a;
+  --muted-foreground: #676c76;
+  --accent: #3f6fd6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-sev-1: var(--sev-1);
+  --color-sev-2: var(--sev-2);
+  --color-sev-3: var(--sev-3);
+  --color-sev-4: var(--sev-4);
+  --color-success: var(--success);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
